@@ -1,46 +1,111 @@
-OWNER = anchore
-PROJECT = syft
+# Makefile for syft - fork of anchore/syft
 
-TOOL_DIR = .tool
-BINNY = $(TOOL_DIR)/binny
-TASK = $(TOOL_DIR)/task
+BINARY := syft
+GO := go
+GOFLAGS ?= -trimpath
+LDFLAGS := -ldflags "-s -w"
+BUILD_DIR := ./dist
+CMD_DIR := ./cmd/syft
 
-.DEFAULT_GOAL := make-default
+# Version information
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "v0.0.0-dev")
+GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-## Bootstrapping targets #################################
+LD_VERSION_FLAGS := -X main.version=$(VERSION) -X main.gitCommit=$(GIT_COMMIT) -X main.buildDate=$(BUILD_DATE)
+LDFLAGS := -ldflags "-s -w $(LD_VERSION_FLAGS)"
 
-# note: we need to assume that binny and task have not already been installed
-$(BINNY):
-	@mkdir -p $(TOOL_DIR)
-	@curl -sSfL https://get.anchore.io/binny | sh -s -- -b $(TOOL_DIR)
+.DEFAULT_GOAL := build
 
-# note: we need to assume that binny and task have not already been installed
-.PHONY: task
-$(TASK) task: $(BINNY)
-	@$(BINNY) install task -q
+.PHONY: all
+all: clean lint test build
 
-.PHONY: ci-bootstrap-go
-ci-bootstrap-go:
-	go mod download
+.PHONY: build
+build:
+	@echo "Building $(BINARY) $(VERSION)..."
+	@mkdir -p $(BUILD_DIR)
+	$(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY) $(CMD_DIR)
 
-# this is a bootstrapping catch-all, where if the target doesn't exist, we'll ensure the tools are installed and then try again
-%:
-	@make --silent $(TASK)
-	@$(TASK) $@
+.PHONY: install
+install:
+	@echo "Installing $(BINARY)..."
+	$(GO) install $(GOFLAGS) $(LDFLAGS) $(CMD_DIR)
 
-## Shim targets #################################
+.PHONY: run
+run:
+	$(GO) run $(CMD_DIR) $(ARGS)
 
-.PHONY: make-default
-make-default: $(TASK)
-	@# run the default task in the taskfile
-	@$(TASK)
+.PHONY: test
+test:
+	@echo "Running unit tests..."
+	$(GO) test ./... -v -race -count=1
 
-# for those of us that can't seem to kick the habit of typing `make ...` lets wrap the superior `task` tool
-TASKS := $(shell bash -c "test -f $(TASK) && NO_COLOR=1 $(TASK) -l | grep '^\* ' | cut -d' ' -f2 | tr -d ':' | tr '\n' ' '" ) $(shell bash -c "test -f $(TASK) && NO_COLOR=1 $(TASK) -l | grep 'aliases:' | cut -d ':' -f 3 | tr '\n' ' ' | tr -d ','")
+.PHONY: test-unit
+test-unit:
+	$(GO) test ./... -v -race -count=1 -short
 
-.PHONY: $(TASKS)
-$(TASKS): $(TASK)
-	@$(TASK) $@
+.PHONY: test-integration
+test-integration:
+	@echo "Running integration tests..."
+	$(GO) test ./... -v -race -count=1 -tags=integration
 
-help: $(TASK)
-	@$(TASK) -l
+.PHONY: lint
+lint:
+	@echo "Running linter..."
+	@which golangci-lint > /dev/null 2>&1 || (echo "golangci-lint not found, install via .binny.yaml tools"; exit 1)
+	golangci-lint run ./...
+
+.PHONY: fmt
+fmt:
+	$(GO) fmt ./...
+
+.PHONY: vet
+vet:
+	$(GO) vet ./...
+
+.PHONY: tidy
+tidy:
+	$(GO) mod tidy
+
+.PHONY: clean
+clean:
+	@echo "Cleaning build artifacts..."
+	@rm -rf $(BUILD_DIR)
+	@$(GO) clean -cache
+
+.PHONY: snapshot
+snapshot:
+	@echo "Creating snapshot build with goreleaser..."
+	@which goreleaser > /dev/null 2>&1 || (echo "goreleaser not found"; exit 1)
+	goreleaser release --snapshot --clean --skip=publish
+
+.PHONY: release
+release:
+	@echo "Creating release with goreleaser..."
+	goreleaser release --clean
+
+.PHONY: bootstrap
+bootstrap:
+	@echo "Bootstrapping tools..."
+	@which binny > /dev/null 2>&1 && binny install || go install github.com/anchore/binny@latest
+	binny install
+
+.PHONY: show-version
+show-version:
+	@echo $(VERSION)
+
+.PHONY: help
+help:
+	@echo "Available targets:"
+	@echo "  build             - Build the binary"
+	@echo "  install           - Install the binary"
+	@echo "  test              - Run all tests"
+	@echo "  test-unit         - Run unit tests only"
+	@echo "  test-integration  - Run integration tests"
+	@echo "  lint              - Run linter"
+	@echo "  fmt               - Format code"
+	@echo "  tidy              - Tidy go modules"
+	@echo "  clean             - Remove build artifacts"
+	@echo "  snapshot          - Build snapshot release"
+	@echo "  bootstrap         - Install required tools"
+	@echo "  show-version      - Print current version"
