@@ -80,6 +80,12 @@ clean:
 	@rm -rf $(BUILD_DIR)
 	# Note: skipping 'go clean -cache' here to keep the build cache intact for faster rebuilds
 
+# clean-all also wipes the Go build cache; useful when debugging strange cache issues
+.PHONY: clean-all
+clean-all: clean
+	@echo "Purging Go build cache..."
+	$(GO) clean -cache
+
 .PHONY: snapshot
 snapshot:
 	@echo "Creating snapshot build with goreleaser..."
@@ -113,8 +119,9 @@ help:
 	@echo "  lint              - Run linter"
 	@echo "  fmt               - Format code"
 	@echo "  tidy              - Tidy go modules"
-	@echo "  clean             - Remove build artifacts"
-	@echo "  snapshot          - Create a snapshot release with goreleaser"
-	@echo "  release           - Create a release with goreleaser"
-	@echo "  bootstrap         - Install required tools"
-	@echo "  show-version      - Print the current version"
+	@echo "  clean             - Remove build artifacts (keeps Go cache)"
+	@echo "  clean-all         - Remove build artifacts AND purge Go build cache"
+	@echo "  snapshot          - Create snapshot build via goreleaser"
+	@echo "  release           - Create release via goreleaser"
+	@echo "  bootstrap         - Install required tools via binny"
+	@echo "  show-version      - Print current version"
