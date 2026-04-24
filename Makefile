@@ -78,7 +78,7 @@ tidy:
 clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf $(BUILD_DIR)
-	@$(GO) clean -cache
+	# Note: skipping 'go clean -cache' here to keep the build cache intact for faster rebuilds
 
 .PHONY: snapshot
 snapshot:
@@ -114,6 +114,7 @@ help:
 	@echo "  fmt               - Format code"
 	@echo "  tidy              - Tidy go modules"
 	@echo "  clean             - Remove build artifacts"
-	@echo "  snapshot          - Build snapshot release"
+	@echo "  snapshot          - Create a snapshot release with goreleaser"
+	@echo "  release           - Create a release with goreleaser"
 	@echo "  bootstrap         - Install required tools"
-	@echo "  show-version      - Print current version"
+	@echo "  show-version      - Print the current version"
