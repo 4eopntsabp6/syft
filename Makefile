@@ -35,9 +35,16 @@ install:
 run:
 	$(GO) run $(CMD_DIR) $(ARGS)
 
+# Use -short to skip slow tests by default; use 'test-full' for the complete suite
 .PHONY: test
 test:
 	@echo "Running unit tests..."
+	$(GO) test ./... -v -race -count=1 -short
+
+# Run the full test suite without -short
+.PHONY: test-full
+test-full:
+	@echo "Running full unit tests (no -short)..."
 	$(GO) test ./... -v -race -count=1
 
 .PHONY: test-unit
@@ -99,7 +106,8 @@ help:
 	@echo "Available targets:"
 	@echo "  build             - Build the binary"
 	@echo "  install           - Install the binary"
-	@echo "  test              - Run all tests"
+	@echo "  test              - Run tests (short mode, skips slow tests)"
+	@echo "  test-full         - Run all tests without -short flag"
 	@echo "  test-unit         - Run unit tests only"
 	@echo "  test-integration  - Run integration tests"
 	@echo "  lint              - Run linter"
