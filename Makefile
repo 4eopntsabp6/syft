@@ -107,21 +107,18 @@ bootstrap:
 show-version:
 	@echo $(VERSION)
 
+# dev: quick build + run shortcut for local iteration
+# usage: make dev ARGS="packages dir:."
+.PHONY: dev
+dev: build
+	$(BUILD_DIR)/$(BINARY) $(ARGS)
+
 .PHONY: help
 help:
 	@echo "Available targets:"
 	@echo "  build             - Build the binary"
 	@echo "  install           - Install the binary"
+	@echo "  dev               - Build and immediately run (pass ARGS=\"...\" for arguments)"
 	@echo "  test              - Run tests (short mode, skips slow tests)"
 	@echo "  test-full         - Run all tests without -short flag"
 	@echo "  test-unit         - Run unit tests only"
-	@echo "  test-integration  - Run integration tests"
-	@echo "  lint              - Run linter"
-	@echo "  fmt               - Format code"
-	@echo "  tidy              - Tidy go modules"
-	@echo "  clean             - Remove build artifacts (keeps Go cache)"
-	@echo "  clean-all         - Remove build artifacts AND purge Go build cache"
-	@echo "  snapshot          - Create snapshot build via goreleaser"
-	@echo "  release           - Create release via goreleaser"
-	@echo "  bootstrap         - Install required tools via binny"
-	@echo "  show-version      - Print current version"
